@@ -14,6 +14,12 @@ type Command struct {
 
 var commands = make(map[string]*Command)
 
+// die prints an error message, then exits with nonzero status.
+func die(msg string) {
+	fmt.Fprintln(os.Stderr, msg)
+	os.Exit(1)
+}
+
 func usage() {
 	// print header
 	fmt.Fprintf(os.Stderr, "Usage: %s <command> [<arg> ...]\n", os.Args[0])

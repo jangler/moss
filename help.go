@@ -14,8 +14,7 @@ func helpFunc() {
 			fmt.Printf("Usage: mq %s\n", cmd.Usage)
 			fmt.Println(cmd.Help)
 		} else {
-			fmt.Fprintf(os.Stderr, "help: no such command: %s\n", flag.Arg(1))
-			os.Exit(1)
+			die("help: no such command: " + flag.Arg(1))
 		}
 	} else {
 		flag.Usage()
