@@ -4,14 +4,108 @@ import (
 	"bufio"
 	"container/list"
 	"fmt"
+	"io"
 	"net"
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
-var queue *list.List
-var curCmd *exec.Cmd
+const (
+	statePause uint8 = iota
+	statePlay
+	stateStop
+)
+
+var (
+	curCmd  *exec.Cmd
+	curElem *list.Element
+	queue   *list.List
+	state   = stateStop
+)
+
+// del removes each element from l whose 1-based index is in indices.
+func del(l *list.List, indices []int) {
+	i := 1
+	for e := l.Front(); e != nil; i++ {
+		next := e.Next()
+		for _, index := range indices {
+			if index == i {
+				l.Remove(e)
+				break
+			}
+		}
+		e = next
+	}
+}
+
+// ls writes the contents of l, whose elements must have []string values, to w.
+// one line is written for each element of l.
+func ls(l *list.List, w io.Writer) {
+	for e := l.Front(); e != nil; e = e.Next() {
+		w.Write([]byte(strings.Join(e.Value.([]string), " ") + "\n"))
+	}
+}
+
+// parseInts converts each string in args to an int and returns a []int of the
+// results, or returns an error if an index cannot be converted.
+func parseInts(args []string) ([]int, error) {
+	ints := make([]int, len(args))
+	for i, arg := range args {
+		v, err := strconv.ParseInt(arg, 10, 0)
+		if err != nil {
+			return nil, fmt.Errorf("%s", arg)
+		}
+		ints[i] = int(v)
+	}
+	return ints, nil
+}
+
+// pause suspends the current command.
+func pause() {
+	if state == statePlay && curCmd != nil {
+		curCmd.Process.Signal(syscall.SIGSTOP)
+		state = statePause
+	}
+}
+
+// play resumes the current command if paused, or starts a new command
+// otherwise.
+func play() {
+	switch state {
+	case statePause:
+		if curCmd != nil {
+			curCmd.Process.Signal(syscall.SIGCONT)
+			state = statePlay
+		}
+	case stateStop:
+		if curElem == nil {
+			curElem = queue.Front()
+		}
+		if curElem != nil {
+			args := curElem.Value.([]string)
+			curCmd = exec.Command(args[0], args[1:]...)
+			curCmd.Start()
+			state = statePlay
+			go waitCmd()
+		}
+	}
+}
+
+// waitCmd waits for cmd to finish, then runs the next command in the queue.
+func waitCmd() {
+	curCmd.Wait()
+	if state == statePlay { // data race
+		if curElem != nil {
+			curElem = curElem.Next()
+		}
+		state = stateStop
+		if curElem != nil {
+			play()
+		}
+	}
+}
 
 // handleConn handles a message from a connection and returns true if and only
 // if the server should continue to listen.
@@ -29,6 +123,8 @@ func handleConn(conn net.Conn) bool {
 	case "add":
 		if len(args) >= 2 {
 			queue.PushBack(args[1:])
+		} else {
+			conn.Write([]byte("\033add: not enough arguments\n"))
 		}
 	case "del":
 		if len(args) < 2 {
@@ -37,72 +133,88 @@ func handleConn(conn net.Conn) bool {
 		}
 
 		// parse indices
-		indices := make([]int, len(args)-1)
-		for i, arg := range(args[1:]) {
-			index, err := strconv.ParseInt(arg, 10, 0)
-			if err != nil {
-				conn.Write([]byte(fmt.Sprintf("\033del: invalid index: %s\n",
-					arg)))
-				return true
-			}
+		indices, err := parseInts(args[1:])
+		if err != nil {
+			conn.Write([]byte(
+				fmt.Sprintf("\033del: invalid index: %v\n", err)))
+			break
+		}
+		for _, index := range indices {
 			if index < 1 || int(index) > queue.Len() {
 				conn.Write([]byte(
-					fmt.Sprintf("\033del: index out of bounds: %s\n", arg)))
+					fmt.Sprintf("\033del: index out of bounds: %s\n", index)))
 				return true
 			}
-			indices[i] = int(index)
 		}
 
+		// TODO: handle case where current command is deleted
+
 		// delete elements
-		i := 1
-		for e := queue.Front(); e != nil; i++ {
-			next := e.Next()
-			for _, index := range indices {
-				if index == i {
-					queue.Remove(e)
-					break
-				}
-			}
-			e = next
-		}
+		del(queue, indices)
 	case "kill":
-		return false
+		if len(args) == 1 {
+			return false
+		} else {
+			conn.Write([]byte("\033kill: too many arguments\n"))
+		}
 	case "ls":
-		for e := queue.Front(); e != nil; e = e.Next() {
-			conn.Write([]byte(strings.Join(e.Value.([]string), " ") + "\n"))
+		if len(args) == 1 {
+			ls(queue, conn)
+		} else {
+			conn.Write([]byte("\033ls: too many arguments\n"))
+		}
+	case "pause":
+		if len(args) == 1 {
+			pause()
+		} else {
+			conn.Write([]byte("\033pause: too many arguments\n"))
 		}
 	case "play":
-		var i, index int64
-		var err error
-		if len(args) == 2 {
-			index, err = strconv.ParseInt(args[1], 10, 0)
-			if err != nil {
-				conn.Write([]byte(fmt.Sprintf("\033play: invalid index: %s\n",
-					args[1])))
-				break
-			}
+		if len(args) == 1 {
+			play()
+		} else {
+			conn.Write([]byte("\033play: too many arguments\n"))
 		}
-		var e *list.Element
-		for e = queue.Front(); e != nil && i < index-1; e = e.Next() {
-			i++
-		}
-		if e == nil {
-			conn.Write([]byte(
-				fmt.Sprintf("\033play: index out of bounds: %s\n", index)))
+	case "status":
+		if len(args) > 1 {
+			conn.Write([]byte("\033status: too many arguments\n"))
 			break
 		}
 
-		// kill running command
-		if curCmd != nil {
-			curCmd.Process.Kill()
+		switch state {
+		case statePause:
+			conn.Write([]byte("paused"))
+		case statePlay:
+			conn.Write([]byte("playing"))
+		case stateStop:
+			conn.Write([]byte("stopped"))
+		}
+		if curElem != nil {
+			conn.Write([]byte(": " +
+				strings.Join(curElem.Value.([]string), " ")))
+		}
+		conn.Write([]byte{'\n'})
+	case "stop":
+		if len(args) > 1 {
+			conn.Write([]byte("\033stop: too many arguments\n"))
+			break
 		}
 
-		args = e.Value.([]string)
-		curCmd = exec.Command(args[0], args[1:]...)
-		curCmd.Start()
-	case "stop":
 		if curCmd != nil {
 			curCmd.Process.Kill()
+			curCmd = nil
+		}
+		state = stateStop
+	case "toggle":
+		if len(args) > 1 {
+			conn.Write([]byte("\033toggle: too many arguments\n"))
+			break
+		}
+
+		if state == statePlay {
+			pause()
+		} else {
+			play()
 		}
 	default:
 		conn.Write([]byte{'\033'})

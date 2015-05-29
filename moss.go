@@ -37,8 +37,11 @@ Commands:
   del <index> ...        remove commands from the current list
   kill                   stop the server
   ls                     print the current list
-  play [<index>]         run the command at the given index in the current list
+  pause                  suspend the current command
+  play                   start or resume the current command
+  status                 print the current status and command
   stop                   kill the current command
+  toggle                 toggle between play and pause states
 `)
 
 	fmt.Fprintln(os.Stderr, "\nOptions:")
