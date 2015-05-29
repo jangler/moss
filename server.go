@@ -30,9 +30,44 @@ func handleConn(conn net.Conn) bool {
 		if len(args) >= 2 {
 			queue.PushBack(args[1:])
 		}
+	case "del":
+		if len(args) < 2 {
+			conn.Write([]byte("\033del: not enough arguments\n"))
+			break
+		}
+
+		// parse indices
+		indices := make([]int, len(args)-1)
+		for i, arg := range(args[1:]) {
+			index, err := strconv.ParseInt(arg, 10, 0)
+			if err != nil {
+				conn.Write([]byte(fmt.Sprintf("\033del: invalid index: %s\n",
+					arg)))
+				return true
+			}
+			if index < 1 || int(index) > queue.Len() {
+				conn.Write([]byte(
+					fmt.Sprintf("\033del: index out of bounds: %s\n", arg)))
+				return true
+			}
+			indices[i] = int(index)
+		}
+
+		// delete elements
+		i := 1
+		for e := queue.Front(); e != nil; i++ {
+			next := e.Next()
+			for _, index := range indices {
+				if index == i {
+					queue.Remove(e)
+					break
+				}
+			}
+			e = next
+		}
 	case "kill":
 		return false
-	case "list":
+	case "ls":
 		for e := queue.Front(); e != nil; e = e.Next() {
 			conn.Write([]byte(strings.Join(e.Value.([]string), " ") + "\n"))
 		}
@@ -52,7 +87,8 @@ func handleConn(conn net.Conn) bool {
 			i++
 		}
 		if e == nil {
-			conn.Write([]byte("\033play: index out of bounds\n"))
+			conn.Write([]byte(
+				fmt.Sprintf("\033play: index out of bounds: %s\n", index)))
 			break
 		}
 

@@ -33,9 +33,11 @@ Otherwise, the given command and its arguments are sent to the server.`)
 
 	fmt.Fprint(os.Stderr, `
 Commands:
-  add <cmd> [<arg> ...]  add a command to the current queue
+  add <cmd> [<arg> ...]  add a command to the current list
+  del <index> ...        remove commands from the current list
   kill                   stop the server
-  list                   print the current queue
+  ls                     print the current list
+  play [<index>]         run the command at the given index in the current list
   stop                   kill the current command
 `)
 
