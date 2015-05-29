@@ -111,11 +111,15 @@ func prev() {
 
 // stepState adjusts the state after a change in the current command.
 func stepState() {
-	if state == statePlay {
-		stop()
+	if state == statePlay && curCmd != nil {
+		// kind of ugly, but this all makes sense if you consider waitCmd()
 		if curElem != nil {
-			play()
+			curElem = curElem.Prev()
+			if curElem == nil {
+				curElem = queue.PushFront([]string{}) // dummy element
+			}
 		}
+		curCmd.Process.Kill()
 	} else {
 		stop()
 	}
@@ -123,19 +127,23 @@ func stepState() {
 
 // stop kills the current command.
 func stop() {
+	state = stateStop
 	if curCmd != nil {
 		curCmd.Process.Kill()
 		curCmd = nil
 	}
-	state = stateStop
 }
 
 // waitCmd waits for cmd to finish, then runs the next command in the queue.
 func waitCmd() {
 	curCmd.Wait()
-	if state == statePlay { // data race
+	if state == statePlay { // here there be data races
 		if curElem != nil {
-			curElem = curElem.Next()
+			next := curElem.Next()
+			if len(curElem.Value.([]string)) == 0 { // dummy element
+				queue.Remove(curElem)
+			}
+			curElem = next
 		}
 		state = stateStop
 		if curElem != nil {
