@@ -48,6 +48,14 @@ func ls(l *list.List, w io.Writer) {
 	}
 }
 
+// next steps forward in the command list.
+func next() {
+	if curElem != nil {
+		curElem = curElem.Next()
+	}
+	stepState()
+}
+
 // parseInts converts each string in args to an int and returns a []int of the
 // results, or returns an error if an index cannot be converted.
 func parseInts(args []string) ([]int, error) {
@@ -91,6 +99,35 @@ func play() {
 			go waitCmd()
 		}
 	}
+}
+
+// prev steps backward in the command list.
+func prev() {
+	if curElem != nil {
+		curElem = curElem.Prev()
+	}
+	stepState()
+}
+
+// stepState adjusts the state after a change in the current command.
+func stepState() {
+	if state == statePlay {
+		stop()
+		if curElem != nil {
+			play()
+		}
+	} else {
+		stop()
+	}
+}
+
+// stop kills the current command.
+func stop() {
+	if curCmd != nil {
+		curCmd.Process.Kill()
+		curCmd = nil
+	}
+	state = stateStop
 }
 
 // waitCmd waits for cmd to finish, then runs the next command in the queue.
@@ -163,6 +200,12 @@ func handleConn(conn net.Conn) bool {
 		} else {
 			conn.Write([]byte("\033ls: too many arguments\n"))
 		}
+	case "next":
+		if len(args) == 1 {
+			next()
+		} else {
+			conn.Write([]byte("\033next: too many arguments\n"))
+		}
 	case "pause":
 		if len(args) == 1 {
 			pause()
@@ -174,6 +217,12 @@ func handleConn(conn net.Conn) bool {
 			play()
 		} else {
 			conn.Write([]byte("\033play: too many arguments\n"))
+		}
+	case "prev":
+		if len(args) == 1 {
+			prev()
+		} else {
+			conn.Write([]byte("\033prev: too many arguments\n"))
 		}
 	case "status":
 		if len(args) > 1 {
@@ -195,16 +244,11 @@ func handleConn(conn net.Conn) bool {
 		}
 		conn.Write([]byte{'\n'})
 	case "stop":
-		if len(args) > 1 {
+		if len(args) == 1 {
+			stop()
+		} else {
 			conn.Write([]byte("\033stop: too many arguments\n"))
-			break
 		}
-
-		if curCmd != nil {
-			curCmd.Process.Kill()
-			curCmd = nil
-		}
-		state = stateStop
 	case "toggle":
 		if len(args) > 1 {
 			conn.Write([]byte("\033toggle: too many arguments\n"))

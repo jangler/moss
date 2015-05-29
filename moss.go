@@ -37,8 +37,10 @@ Commands:
   del <index> ...        remove commands from the current list
   kill                   stop the server
   ls                     print the current list
+  next                   step forward in the list
   pause                  suspend the current command
   play                   start or resume the current command
+  prev                   step backward in the list
   status                 print the current status and command
   stop                   kill the current command
   toggle                 toggle between play and pause states
