@@ -33,7 +33,7 @@ Commands:
   ls                     print the current playlist
   next                   step forward in the playlist
   pause                  suspend the current command
-  play                   start or resume the current command
+  play [<index>]         start/resume current command or start command at index
   prev                   step backward in the playlist
   status                 print the current status and command
   stop                   kill the current command

@@ -111,13 +111,11 @@ func prev() {
 
 // stepState adjusts the state after a change in the current command.
 func stepState() {
-	if state == statePlay && curCmd != nil {
+	if state == statePlay && curElem != nil && curCmd != nil {
 		// kind of ugly, but this all makes sense if you consider waitCmd()
-		if curElem != nil {
-			curElem = curElem.Prev()
-			if curElem == nil {
-				curElem = queue.PushFront([]string{}) // dummy element
-			}
+		curElem = curElem.Prev()
+		if curElem == nil {
+			curElem = queue.PushFront([]string{}) // dummy element
 		}
 		curCmd.Process.Kill()
 	} else {
@@ -129,7 +127,9 @@ func stepState() {
 func stop() {
 	state = stateStop
 	if curCmd != nil {
-		curCmd.Process.Kill()
+		if curCmd.Process != nil {
+			curCmd.Process.Kill()
+		}
 		curCmd = nil
 	}
 }
@@ -138,7 +138,7 @@ func stop() {
 func waitCmd(cmd *exec.Cmd) {
 	cmd.Wait()
 	<-unlock
-	if state == statePlay { // here there be data races
+	if state == statePlay {
 		if curElem != nil {
 			next := curElem.Next()
 			if len(curElem.Value.([]string)) == 0 { // dummy element
@@ -208,7 +208,7 @@ func handleConn(conn net.Conn) bool {
 		for _, index := range indices {
 			if index < 1 || int(index) > queue.Len() {
 				conn.Write([]byte(
-					fmt.Sprintf("\033del: index out of bounds: %s\n", index)))
+					fmt.Sprintf("\033del: index out of bounds: %d\n", index)))
 				return true
 			}
 		}
@@ -241,9 +241,38 @@ func handleConn(conn net.Conn) bool {
 			conn.Write([]byte("\033pause: too many arguments\n"))
 		}
 	case "play":
-		if len(args) == 1 {
+		switch len(args) {
+		case 1:
 			play()
-		} else {
+		case 2:
+			// parse index
+			index, err := strconv.ParseInt(args[1], 10, 0)
+			if err != nil {
+				conn.Write([]byte(
+					fmt.Sprintf("\033play: invalid index: %s\n", args[1])))
+				break
+			}
+			if index < 1 || int(index) > queue.Len() {
+				conn.Write([]byte(
+					fmt.Sprintf("\033play: index out of bounds: %d\n", index)))
+				break
+			}
+
+			// get element
+			curElem = queue.Front()
+			for index > 1 {
+				curElem = curElem.Next()
+				index--
+			}
+
+			// start command
+			if curCmd != nil {
+				state = statePlay
+				stepState()
+			} else {
+				play()
+			}
+		default:
 			conn.Write([]byte("\033play: too many arguments\n"))
 		}
 	case "prev":
