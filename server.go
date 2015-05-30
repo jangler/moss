@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -28,6 +30,7 @@ var (
 	curCmd  *exec.Cmd
 	curElem *list.Element
 	queue   *list.List
+	wd      string
 	state   = stateStop
 	unlock  = make(chan int) // used as mutex
 	assocs  = make(map[string]Assoc)
@@ -236,6 +239,15 @@ func handleConn(conn net.Conn) bool {
 		}
 	}
 
+	// shorten file path arguments
+	for i, arg := range args {
+		if _, err := os.Stat(arg); err == nil {
+			if rel, err := filepath.Rel(wd, arg); err == nil {
+				args[i] = rel
+			}
+		}
+	}
+
 	// process message
 	switch args[0] {
 	case "add":
@@ -429,7 +441,8 @@ func startServer(addr string) <-chan int {
 	c, ready := make(chan int), make(chan int)
 
 	go func() {
-		// init queue, tcp server
+		// init server
+		wd, _ = os.Getwd()
 		queue = list.New()
 		ln, err := net.Listen("tcp", addr)
 		close(ready)

@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -30,6 +32,15 @@ func sendCommand(addr string, args ...string) int {
 		return 1
 	}
 	defer conn.Close()
+
+	// canonicalize file path arguments
+	for i, arg := range args {
+		if _, err := os.Stat(arg); err == nil {
+			if arg, err := filepath.Abs(arg); err == nil {
+				args[i] = filepath.Clean(arg)
+			}
+		}
+	}
 
 	// send message
 	for i, arg := range args {
