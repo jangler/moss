@@ -100,10 +100,10 @@ func TestLs(t *testing.T) {
 
 	// ls non-empty list
 	b.Reset()
-	l.PushBack([]string{"echo", "hello"})
-	l.PushBack([]string{"echo", "world"})
+	l.PushBack("hello")
+	l.PushBack("world")
 	ls(l, b)
-	if want, got := "echo hello\necho world\n", b.String(); want != got {
+	if want, got := "hello\nworld\n", b.String(); want != got {
 		t.Errorf("ls: got %#v; want %#v", got, want)
 	}
 }
@@ -166,17 +166,14 @@ func TestWriteStatus(t *testing.T) {
 		t.Errorf("writeStatus: got %#v; want %#v", got, want)
 	}
 
-	l := list.New()
-	l.PushBack([]string{"echo"})
-
 	buf.Reset()
-	writeStatus(buf, statePause, l.Front())
+	writeStatus(buf, statePause, []string{"echo"})
 	if want, got := "paused: echo\n", buf.String(); want != got {
 		t.Errorf("writeStatus: got %#v; want %#v", got, want)
 	}
 
 	buf.Reset()
-	writeStatus(buf, statePlay, l.Front())
+	writeStatus(buf, statePlay, []string{"echo"})
 	if want, got := "playing: echo\n", buf.String(); want != got {
 		t.Errorf("writeStatus: got %#v; want %#v", got, want)
 	}

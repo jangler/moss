@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -17,12 +18,19 @@ const (
 	stateStop
 )
 
+// Assoc contains a regexp and a command associated with it.
+type Assoc struct {
+	Regexp *regexp.Regexp
+	Cmd    []string
+}
+
 var (
 	curCmd  *exec.Cmd
 	curElem *list.Element
 	queue   *list.List
 	state   = stateStop
 	unlock  = make(chan int) // used as mutex
+	assocs  = make(map[string]Assoc)
 )
 
 // checkIndices checks indices and err. in error cases, an error message is
@@ -30,14 +38,12 @@ var (
 func checkIndices(cmd string, indices []int, err error, w io.Writer,
 	length int) bool {
 	if err != nil {
-		w.Write([]byte(
-			fmt.Sprintf("\033%s: invalid index: %v\n", cmd, err)))
+		fmt.Fprintf(w, "\033%s: invalid index: %v\n", cmd, err)
 		return false
 	}
 	for _, index := range indices {
 		if index < 1 || int(index) > length {
-			w.Write([]byte(
-				fmt.Sprintf("\033%s: index out of bounds: %d\n", cmd, index)))
+			fmt.Fprintf(w, "\033%s: index out of bounds: %d\n", cmd, index)
 			return false
 		}
 	}
@@ -69,11 +75,11 @@ func getIndex(l *list.List, i int) *list.Element {
 	return e
 }
 
-// ls writes the contents of l, whose elements must have []string values, to w.
+// ls writes the contents of l, whose elements must have string values, to w.
 // one line is written for each element of l.
 func ls(l *list.List, w io.Writer) {
 	for e := l.Front(); e != nil; e = e.Next() {
-		w.Write([]byte(strings.Join(e.Value.([]string), " ") + "\n"))
+		fmt.Fprintln(w, e.Value.(string))
 	}
 }
 
@@ -121,8 +127,15 @@ func play() {
 			curElem = queue.Front()
 		}
 		if curElem != nil {
-			args := curElem.Value.([]string)
-			curCmd = exec.Command(args[0], args[1:]...)
+			arg := curElem.Value.(string)
+			cmd := []string{"/bin/sh", "-c"}
+			for _, assoc := range assocs {
+				if assoc.Regexp.MatchString(arg) {
+					cmd = assoc.Cmd
+					break
+				}
+			}
+			curCmd = exec.Command(cmd[0], append(cmd[1:], arg)...)
 			curCmd.Start()
 			state = statePlay
 			go waitCmd(curCmd)
@@ -144,7 +157,7 @@ func stepState() {
 		// kind of ugly, but this all makes sense if you consider waitCmd()
 		curElem = curElem.Prev()
 		if curElem == nil {
-			curElem = queue.PushFront([]string{}) // dummy element
+			curElem = queue.PushFront("") // dummy element
 		}
 		curCmd.Process.Kill()
 	} else {
@@ -170,7 +183,7 @@ func waitCmd(cmd *exec.Cmd) {
 	if state == statePlay {
 		if curElem != nil {
 			next := curElem.Next()
-			if len(curElem.Value.([]string)) == 0 { // dummy element
+			if curElem.Value.(string) == "" { // dummy element
 				queue.Remove(curElem)
 			}
 			curElem = next
@@ -185,19 +198,19 @@ func waitCmd(cmd *exec.Cmd) {
 
 // writeStatus writes a status message to w depending on the state s and
 // current queue element e.
-func writeStatus(w io.Writer, s uint8, e *list.Element) {
+func writeStatus(w io.Writer, s uint8, args []string) {
 	switch s {
 	case statePause:
-		w.Write([]byte("paused"))
+		fmt.Fprint(w, "paused")
 	case statePlay:
-		w.Write([]byte("playing"))
+		fmt.Fprint(w, "playing")
 	case stateStop:
-		w.Write([]byte("stopped"))
+		fmt.Fprint(w, "stopped")
 	}
-	if e != nil {
-		w.Write([]byte(": " + strings.Join(e.Value.([]string), " ")))
+	if args != nil {
+		fmt.Fprint(w, ": "+strings.Join(args, " "))
 	}
-	w.Write([]byte{'\n'})
+	fmt.Fprintln(w)
 }
 
 // handleConn handles a message from a connection and returns true if and only
@@ -206,24 +219,51 @@ func handleConn(conn net.Conn) bool {
 	<-unlock
 	defer func() {
 		go func() { unlock <- 1 }()
-		conn.Write([]byte("\000"))
+		fmt.Fprint(conn, "\000")
 		conn.Close()
 	}()
 
 	msg, _ := readMsg(conn)
 
-	// process message
+	// assemble args
 	args := strings.Split(msg, " ")
+	for i := 0; i < len(args)-1; i++ {
+		if strings.HasSuffix(args[i], `\`) {
+			post := args[i+2:]
+			args = append(args[:i], args[i][:len(args[i])-1]+" "+args[i+1])
+			args = append(args, post...)
+			i--
+		}
+	}
+
+	// process message
 	switch args[0] {
 	case "add":
 		if len(args) >= 2 {
-			queue.PushBack(args[1:])
+			for _, arg := range args[1:] {
+				queue.PushBack(arg)
+			}
 		} else {
-			conn.Write([]byte("\033add: not enough arguments\n"))
+			fmt.Fprintln(conn, "\033add: not enough arguments")
 		}
+	case "assoc":
+		if len(args) < 3 {
+			fmt.Fprintln(conn, "\033assoc: not enough arguments")
+			break
+		}
+
+		// compile regexp
+		re, err := regexp.Compile(args[1])
+		if err != nil {
+			fmt.Fprintf(conn, "\033assoc: bad regexp: %s\n", args[1])
+			break
+		}
+
+		// add association
+		assocs[args[1]] = Assoc{re, args[2:]}
 	case "del":
 		if len(args) < 2 {
-			conn.Write([]byte("\033del: not enough arguments\n"))
+			fmt.Fprintln(conn, "\033del: not enough arguments")
 			break
 		}
 
@@ -245,27 +285,35 @@ func handleConn(conn net.Conn) bool {
 				queue.PushFront(args[1:])
 			}
 		} else {
-			conn.Write([]byte("\033insert: not enough arguments\n"))
+			fmt.Fprintln(conn, "\033insert: not enough arguments")
 		}
 	case "kill":
 		if len(args) == 1 {
 			stop()
 			return false
 		} else {
-			conn.Write([]byte("\033kill: too many arguments\n"))
+			fmt.Fprintln(conn, "\033kill: too many arguments")
 		}
 	case "ls":
 		if len(args) == 1 {
 			ls(queue, conn)
 		} else {
-			conn.Write([]byte("\033ls: too many arguments\n"))
+			fmt.Fprintln(conn, "\033ls: too many arguments")
+		}
+	case "lsassoc":
+		if len(args) == 1 {
+			for k, v := range assocs {
+				fmt.Fprintf(conn, "%s\t%s\n", k, strings.Join(v.Cmd, " "))
+			}
+		} else {
+			fmt.Fprintln(conn, "\033lsassoc: too many arguments")
 		}
 	case "mv":
 		if len(args) < 3 {
-			conn.Write([]byte("\033mv: not enough arguments\n"))
+			fmt.Fprintln(conn, "\033mv: not enough arguments")
 			break
 		} else if len(args) > 3 {
-			conn.Write([]byte("\033mv: too many arguments\n"))
+			fmt.Fprintln(conn, "\033mv: too many arguments")
 			break
 		}
 
@@ -288,13 +336,13 @@ func handleConn(conn net.Conn) bool {
 		if len(args) == 1 {
 			next()
 		} else {
-			conn.Write([]byte("\033next: too many arguments\n"))
+			fmt.Fprintln(conn, "\033next: too many arguments")
 		}
 	case "pause":
 		if len(args) == 1 {
 			pause()
 		} else {
-			conn.Write([]byte("\033pause: too many arguments\n"))
+			fmt.Fprintln(conn, "\033pause: too many arguments")
 		}
 	case "play":
 		switch len(args) {
@@ -304,13 +352,11 @@ func handleConn(conn net.Conn) bool {
 			// parse index
 			index, err := strconv.ParseInt(args[1], 10, 0)
 			if err != nil {
-				conn.Write([]byte(
-					fmt.Sprintf("\033play: invalid index: %s\n", args[1])))
+				fmt.Fprintf(conn, "\033play: invalid index: %s\n", args[1])
 				break
 			}
 			if index < 1 || int(index) > queue.Len() {
-				conn.Write([]byte(
-					fmt.Sprintf("\033play: index out of bounds: %d\n", index)))
+				fmt.Fprintf(conn, "\033play: index out of bounds: %d\n", index)
 				break
 			}
 
@@ -325,29 +371,33 @@ func handleConn(conn net.Conn) bool {
 				play()
 			}
 		default:
-			conn.Write([]byte("\033play: too many arguments\n"))
+			fmt.Fprintln(conn, "\033play: too many arguments")
 		}
 	case "prev":
 		if len(args) == 1 {
 			prev()
 		} else {
-			conn.Write([]byte("\033prev: too many arguments\n"))
+			fmt.Fprintln(conn, "\033prev: too many arguments")
 		}
 	case "status":
 		if len(args) == 1 {
-			writeStatus(conn, state, curElem)
+			if curCmd != nil {
+				writeStatus(conn, state, curCmd.Args)
+			} else {
+				writeStatus(conn, state, nil)
+			}
 		} else {
-			conn.Write([]byte("\033status: too many arguments\n"))
+			fmt.Fprintln(conn, "\033status: too many arguments")
 		}
 	case "stop":
 		if len(args) == 1 {
 			stop()
 		} else {
-			conn.Write([]byte("\033stop: too many arguments\n"))
+			fmt.Fprintln(conn, "\033stop: too many arguments")
 		}
 	case "toggle":
 		if len(args) > 1 {
-			conn.Write([]byte("\033toggle: too many arguments\n"))
+			fmt.Fprintln(conn, "\033toggle: too many arguments")
 			break
 		}
 
@@ -356,9 +406,19 @@ func handleConn(conn net.Conn) bool {
 		} else {
 			play()
 		}
+	case "unassoc":
+		if len(args) < 2 {
+			fmt.Fprintln(conn, "\033unassoc: not enough arguments")
+			break
+		} else if len(args) > 2 {
+			fmt.Fprintln(conn, "\033unassoc: too many arguments")
+			break
+		}
+
+		// remove association
+		delete(assocs, args[1])
 	default:
-		conn.Write([]byte{'\033'})
-		conn.Write([]byte(fmt.Sprintf("%s: unknown command\n", args[0])))
+		fmt.Fprintf(conn, "\033%s: unknown command\n", args[0])
 	}
 	return true
 }

@@ -32,7 +32,10 @@ func sendCommand(addr string, args ...string) int {
 	defer conn.Close()
 
 	// send message
-	fmt.Fprint(conn, strings.Join(args, " ")+"\000")
+	for i, arg := range args {
+		args[i] = strings.Replace(arg, " ", `\ `, -1) // escape spaces
+	}
+	fmt.Fprintf(conn, "%s\000", strings.Join(args, " "))
 
 	// handle response
 	msg, err := readMsg(conn)
