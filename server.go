@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"container/list"
 	"fmt"
 	"io"
 	"net"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -435,9 +437,36 @@ func handleConn(conn net.Conn) bool {
 	return true
 }
 
+// readRCFile reads the RC file, if it exists, and sends each line to the
+// server as a command.
+func readRCFile(addr string) {
+	curUser, err := user.Current()
+	if err != nil {
+		return
+	}
+
+	f, _ := os.Open(filepath.Join(curUser.HomeDir, ".mossrc"))
+	if f == nil {
+		f, _ = os.Open(filepath.Join(curUser.HomeDir, ".config", "mossrc"))
+	}
+	if f == nil {
+		return
+	}
+	defer f.Close()
+
+	r := bufio.NewReader(f)
+	for {
+		if line, err := r.ReadString('\n'); err == nil {
+			sendCommand(addr, strings.Split(line[:len(line)-1], " ")...)
+		} else {
+			break
+		}
+	}
+}
+
 // startServer starts the server and returns a channel on which the exit
 // status of the server program is sent when finished.
-func startServer(addr string) <-chan int {
+func startServer(addr string, rc bool) <-chan int {
 	c, ready := make(chan int), make(chan int)
 
 	go func() {
@@ -472,5 +501,8 @@ func startServer(addr string) <-chan int {
 	}()
 
 	<-ready
+	if rc {
+		go readRCFile(addr)
+	}
 	return c
 }

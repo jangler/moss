@@ -43,7 +43,7 @@ func TestSendCommand(t *testing.T) {
 	testSendCommand(t, testAddr, []string{"arg"}, 1,
 		"", "dial tcp :1234: connection refused\n", outbuf, errbuf)
 
-	startServer(testAddr)
+	startServer(testAddr, false)
 
 	// test invalid command
 	testSendCommand(t, testAddr, []string{"cmd"}, 1,

@@ -17,6 +17,8 @@ Usage
 	Otherwise, the given command and its arguments are sent to the server.
 	Specifying no command is equivalent to specifying the 'status' command.
 
+	On server start, commands are read from ~/.mossrc or ~/.config/mossrc.
+
 	Commands:
 	  add <item> ...        append an item to the playlist
 	  assoc <regexp> <cmd>  associate cmd with items that match regexp

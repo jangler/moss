@@ -23,7 +23,9 @@ func usage() {
 	fmt.Fprintln(stderr, `
 If invoked with the -start option, a moss server is started.
 Otherwise, the given command and its arguments are sent to the server.
-Specifying no command is equivalent to specifying the 'status' command.`)
+Specifying no command is equivalent to specifying the 'status' command.
+
+On server start, commands are read from ~/.mossrc or ~/.config/mossrc.`)
 
 	fmt.Fprint(stderr, `
 Commands:
@@ -64,7 +66,7 @@ func main() {
 		fmt.Fprintf(stdout, "%s version %s %s/%s\n", os.Args[0], version,
 			runtime.GOOS, runtime.GOARCH)
 	} else if startFlag {
-		c := startServer(addrFlag)
+		c := startServer(addrFlag, true)
 		os.Exit(<-c)
 	} else if flag.NArg() == 0 {
 		os.Exit(sendCommand(addrFlag, "status"))

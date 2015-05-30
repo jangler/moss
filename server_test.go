@@ -132,7 +132,7 @@ func TestParseInts(t *testing.T) {
 // testStartServer is a helper function for testing startServer.
 func testStartServer(t *testing.T, addr string, status int, out, err string,
 	outbuf, errbuf *bytes.Buffer) {
-	c := startServer(addr)
+	c := startServer(addr, false)
 	ioCmp(t, "startServer", <-c, status, out, err, outbuf, errbuf)
 }
 
