@@ -20,6 +20,45 @@ func stringFromList(l *list.List) string {
 	return strings.Join(a, ", ")
 }
 
+func TestCheckIndices(t *testing.T) {
+	// init
+	l := list.New()
+	for _, v := range []int{1, 2, 3, 4, 5} {
+		l.PushBack(v)
+	}
+
+	// test success
+	buf := &bytes.Buffer{}
+	got := checkIndices("t", []int{1, 2, 3, 3, 4, 5}, nil, buf, l.Len())
+	if want := true; want != got {
+		t.Errorf("checkIndices: got %#v; want %#v", got, want)
+	}
+	if want, got := "", buf.String(); want != got {
+		t.Errorf("checkIndices: got %#v; want %#v", got, want)
+	}
+
+	// test err failure
+	buf.Reset()
+	got = checkIndices("t", []int{}, fmt.Errorf("e"), buf, l.Len())
+	if want := false; want != got {
+		t.Errorf("checkIndices: got %#v; want %#v", got, want)
+	}
+	if want, got := "\033t: invalid index: e\n", buf.String(); want != got {
+		t.Errorf("checkIndices: got %#v; want %#v", got, want)
+	}
+
+	// test bounds failure
+	buf.Reset()
+	got = checkIndices("t", []int{0}, nil, buf, l.Len())
+	if want := false; want != got {
+		t.Errorf("checkIndices: got %#v; want %#v", got, want)
+	}
+	if want, got := "\033t: index out of bounds: 0\n",
+		buf.String(); want != got {
+		t.Errorf("checkIndices: got %#v; want %#v", got, want)
+	}
+}
+
 func TestDel(t *testing.T) {
 	// init
 	l := list.New()
@@ -37,6 +76,16 @@ func TestDel(t *testing.T) {
 	del(l, []int{1, 2, 4})
 	if want, got := "4", stringFromList(l); want != got {
 		t.Errorf("del: got %#v; want %#v", got, want)
+	}
+}
+
+func TestGetIndex(t *testing.T) {
+	l := list.New()
+	for _, v := range []int{1, 2, 3, 4, 5} {
+		l.PushBack(v)
+		if got := getIndex(l, v).Value.(int); got != v {
+			t.Errorf("getIndex: got %#v; want %#v", got, v)
+		}
 	}
 }
 

@@ -25,6 +25,25 @@ var (
 	unlock  = make(chan int) // used as mutex
 )
 
+// checkIndices checks indices and err. in error cases, an error message is
+// written to w and the function returns false.
+func checkIndices(cmd string, indices []int, err error, w io.Writer,
+	length int) bool {
+	if err != nil {
+		w.Write([]byte(
+			fmt.Sprintf("\033%s: invalid index: %v\n", cmd, err)))
+		return false
+	}
+	for _, index := range indices {
+		if index < 1 || int(index) > length {
+			w.Write([]byte(
+				fmt.Sprintf("\033%s: index out of bounds: %d\n", cmd, index)))
+			return false
+		}
+	}
+	return true
+}
+
 // del removes each element from l whose 1-based index is in indices.
 func del(l *list.List, indices []int) {
 	i := 1
@@ -38,6 +57,16 @@ func del(l *list.List, indices []int) {
 		}
 		e = next
 	}
+}
+
+// getIndex returns element i of list l. i must be within bounds.
+func getIndex(l *list.List, i int) *list.Element {
+	e := l.Front()
+	for i > 1 {
+		e = e.Next()
+		i--
+	}
+	return e
 }
 
 // ls writes the contents of l, whose elements must have []string values, to w.
@@ -200,17 +229,8 @@ func handleConn(conn net.Conn) bool {
 
 		// parse indices
 		indices, err := parseInts(args[1:])
-		if err != nil {
-			conn.Write([]byte(
-				fmt.Sprintf("\033del: invalid index: %v\n", err)))
+		if !checkIndices("del", indices, err, conn, queue.Len()) {
 			break
-		}
-		for _, index := range indices {
-			if index < 1 || int(index) > queue.Len() {
-				conn.Write([]byte(
-					fmt.Sprintf("\033del: index out of bounds: %d\n", index)))
-				return true
-			}
 		}
 
 		// delete elements
@@ -239,6 +259,30 @@ func handleConn(conn net.Conn) bool {
 			ls(queue, conn)
 		} else {
 			conn.Write([]byte("\033ls: too many arguments\n"))
+		}
+	case "mv":
+		if len(args) < 3 {
+			conn.Write([]byte("\033mv: not enough arguments\n"))
+			break
+		} else if len(args) > 3 {
+			conn.Write([]byte("\033mv: too many arguments\n"))
+			break
+		}
+
+		// parse indices
+		indices, err := parseInts(args[1:])
+		if !checkIndices("mv", indices, err, conn, queue.Len()) {
+			break
+		}
+
+		// get source and target elements
+		e1, e2 := getIndex(queue, indices[0]), getIndex(queue, indices[1])
+
+		// move source element to target
+		if indices[0] < indices[1] {
+			queue.MoveAfter(e1, e2)
+		} else {
+			queue.MoveBefore(e1, e2)
 		}
 	case "next":
 		if len(args) == 1 {
@@ -271,11 +315,7 @@ func handleConn(conn net.Conn) bool {
 			}
 
 			// get element
-			curElem = queue.Front()
-			for index > 1 {
-				curElem = curElem.Next()
-				index--
-			}
+			curElem = getIndex(queue, int(index))
 
 			// start command
 			if curCmd != nil {

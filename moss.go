@@ -32,6 +32,7 @@ Commands:
   insert <cmd> [<arg> ...]  insert a command after the current command
   kill                      stop the server and current command
   ls                        print the current playlist
+  mv <index> <index>        move a command from one index to another
   next                      step forward in the playlist
   pause                     suspend the current command
   play [<index>]            resume current command or start command at index
