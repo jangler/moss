@@ -215,6 +215,18 @@ func handleConn(conn net.Conn) bool {
 
 		// delete elements
 		del(queue, indices)
+	case "insert":
+		if len(args) >= 2 {
+			length := queue.Len()
+			if curElem != nil {
+				queue.InsertAfter(args[1:], curElem)
+			}
+			if queue.Len() == length { // insertion failed; insert at front
+				queue.PushFront(args[1:])
+			}
+		} else {
+			conn.Write([]byte("\033insert: not enough arguments\n"))
+		}
 	case "kill":
 		if len(args) == 1 {
 			stop()

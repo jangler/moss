@@ -50,7 +50,7 @@ func TestSendCommand(t *testing.T) {
 		"", "cmd: unknown command\n", outbuf, errbuf)
 
 	// test not enough arguments
-	for _, cmd := range []string{"add", "del"} {
+	for _, cmd := range []string{"add", "del", "insert"} {
 		testSendCommand(t, testAddr, []string{cmd}, 1,
 			"", fmt.Sprintf("%s: not enough arguments\n", cmd), outbuf, errbuf)
 	}
