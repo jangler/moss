@@ -1,34 +1,43 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
-	"os"
 	"strings"
 )
 
+// printMsg prints the message to standard output or standard error, depending
+// on the message contents, and returns the exit status of the client program.
+func printMsg(msg string) int {
+	if msg != "" {
+		if msg[0] == '\033' { // signals an error message
+			fmt.Fprint(stderr, msg[1:])
+			return 1
+		} else {
+			fmt.Fprint(stdout, msg)
+		}
+	}
+	return 0
+}
+
 // sendCommand sends a command to the server, then reads and prints output.
-func sendCommand(args ...string) {
+// the return value is the exit status of the client program.
+func sendCommand(addr string, args ...string) int {
 	// connect to server
-	conn, err := net.Dial("tcp", addrFlag)
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		die(args[0] + ": server not running")
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
 	defer conn.Close()
 
 	// send message
 	fmt.Fprint(conn, strings.Join(args, " ")+"\000")
 
-	// read and print response
-	msg, _ := bufio.NewReader(conn).ReadString('\000')
-	msg = msg[:len(msg)-1]
-	if msg != "" {
-		if msg[0] == '\033' { // signals an error message
-			fmt.Fprint(os.Stderr, msg[1:])
-			os.Exit(1)
-		} else {
-			fmt.Print(msg)
-		}
+	// handle response
+	msg, err := readMsg(conn)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
 	}
+	return printMsg(msg)
 }

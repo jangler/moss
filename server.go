@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"container/list"
 	"fmt"
 	"io"
@@ -155,6 +154,23 @@ func waitCmd(cmd *exec.Cmd) {
 	unlock <- 1
 }
 
+// writeStatus writes a status message to w depending on the state s and
+// current queue element e.
+func writeStatus(w io.Writer, s uint8, e *list.Element) {
+	switch s {
+	case statePause:
+		w.Write([]byte("paused"))
+	case statePlay:
+		w.Write([]byte("playing"))
+	case stateStop:
+		w.Write([]byte("stopped"))
+	}
+	if e != nil {
+		w.Write([]byte(": " + strings.Join(e.Value.([]string), " ")))
+	}
+	w.Write([]byte{'\n'})
+}
+
 // handleConn handles a message from a connection and returns true if and only
 // if the server should continue to listen.
 func handleConn(conn net.Conn) bool {
@@ -165,9 +181,7 @@ func handleConn(conn net.Conn) bool {
 		conn.Close()
 	}()
 
-	// read message from conn
-	msg, _ := bufio.NewReader(conn).ReadString('\000')
-	msg = msg[:len(msg)-1]
+	msg, _ := readMsg(conn)
 
 	// process message
 	args := strings.Split(msg, " ")
@@ -239,24 +253,11 @@ func handleConn(conn net.Conn) bool {
 			conn.Write([]byte("\033prev: too many arguments\n"))
 		}
 	case "status":
-		if len(args) > 1 {
+		if len(args) == 1 {
+			writeStatus(conn, state, curElem)
+		} else {
 			conn.Write([]byte("\033status: too many arguments\n"))
-			break
 		}
-
-		switch state {
-		case statePause:
-			conn.Write([]byte("paused"))
-		case statePlay:
-			conn.Write([]byte("playing"))
-		case stateStop:
-			conn.Write([]byte("stopped"))
-		}
-		if curElem != nil {
-			conn.Write([]byte(": " +
-				strings.Join(curElem.Value.([]string), " ")))
-		}
-		conn.Write([]byte{'\n'})
 	case "stop":
 		if len(args) == 1 {
 			stop()
@@ -281,23 +282,41 @@ func handleConn(conn net.Conn) bool {
 	return true
 }
 
-// startServer starts the server.
-func startServer() {
-	// init queue, tcp server
-	queue = list.New()
-	ln, err := net.Listen("tcp", addrFlag)
-	if err != nil {
-		die("-start: server already running")
-	}
-	defer ln.Close()
+// startServer starts the server and returns a channel on which the exit
+// status of the server program is sent when finished.
+func startServer(addr string) <-chan int {
+	c, ready := make(chan int), make(chan int)
 
-	go func() { unlock <- 1 }() // start mutex in unlocked state
-
-	// listen for connections
-	for {
-		conn, _ := ln.Accept()
-		if !handleConn(conn) {
-			break
+	go func() {
+		// init queue, tcp server
+		queue = list.New()
+		ln, err := net.Listen("tcp", addr)
+		close(ready)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			go func() {
+				c <- 1
+				close(c)
+			}()
+			return
 		}
-	}
+		defer ln.Close()
+
+		go func() { unlock <- 1 }() // start mutex in unlocked state
+
+		// listen for connections
+		for {
+			conn, _ := ln.Accept()
+			if conn != nil && !handleConn(conn) {
+				break
+			}
+		}
+		go func() {
+			c <- 0
+			close(c)
+		}()
+	}()
+
+	<-ready
+	return c
 }
