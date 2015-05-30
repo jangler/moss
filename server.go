@@ -62,6 +62,10 @@ func del(l *list.List, indices []int) {
 		next := e.Next()
 		for _, index := range indices {
 			if index == i {
+				if e == curElem {
+					stop()
+					curElem = nil
+				}
 				l.Remove(e)
 				break
 			}
@@ -291,13 +295,14 @@ func handleConn(conn net.Conn) bool {
 		del(queue, indices)
 	case "insert":
 		if len(args) >= 2 {
+			e := curElem
 			for _, arg := range args[1:] {
 				length := queue.Len()
-				if curElem != nil {
-					queue.InsertAfter(arg, curElem)
+				if e != nil {
+					e = queue.InsertAfter(arg, e)
 				}
 				if queue.Len() == length { // insertion failed
-					queue.PushFront(arg)
+					e = queue.PushFront(arg)
 				}
 			}
 		} else {
