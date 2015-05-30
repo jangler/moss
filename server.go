@@ -23,6 +23,7 @@ var (
 	curElem *list.Element
 	queue   *list.List
 	state   = stateStop
+	unlock  = make(chan int) // used as mutex
 )
 
 // del removes each element from l whose 1-based index is in indices.
@@ -96,7 +97,7 @@ func play() {
 			curCmd = exec.Command(args[0], args[1:]...)
 			curCmd.Start()
 			state = statePlay
-			go waitCmd()
+			go waitCmd(curCmd)
 		}
 	}
 }
@@ -135,8 +136,9 @@ func stop() {
 }
 
 // waitCmd waits for cmd to finish, then runs the next command in the queue.
-func waitCmd() {
-	curCmd.Wait()
+func waitCmd(cmd *exec.Cmd) {
+	cmd.Wait()
+	<-unlock
 	if state == statePlay { // here there be data races
 		if curElem != nil {
 			next := curElem.Next()
@@ -150,13 +152,18 @@ func waitCmd() {
 			play()
 		}
 	}
+	unlock <- 1
 }
 
 // handleConn handles a message from a connection and returns true if and only
 // if the server should continue to listen.
 func handleConn(conn net.Conn) bool {
-	defer conn.Close()
-	defer conn.Write([]byte("\000"))
+	<-unlock
+	defer func() {
+		go func() { unlock <- 1 }()
+		conn.Write([]byte("\000"))
+		conn.Close()
+	}()
 
 	// read message from conn
 	msg, _ := bufio.NewReader(conn).ReadString('\000')
@@ -192,12 +199,11 @@ func handleConn(conn net.Conn) bool {
 			}
 		}
 
-		// TODO: handle case where current command is deleted
-
 		// delete elements
 		del(queue, indices)
 	case "kill":
 		if len(args) == 1 {
+			stop()
 			return false
 		} else {
 			conn.Write([]byte("\033kill: too many arguments\n"))
@@ -284,6 +290,8 @@ func startServer() {
 		die("-start: server already running")
 	}
 	defer ln.Close()
+
+	go func() { unlock <- 1 }() // start mutex in unlocked state
 
 	// listen for connections
 	for {
