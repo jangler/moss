@@ -41,3 +41,20 @@ Usage
 	  -addr=":7781": address to connect to
 	  -start=false: start server instead of sending command
 	  -version=false: display version information and exit
+
+Example
+-------
+	$ moss -start &
+	[1] 20595
+	$ moss assoc .\\.mp3$ mpg123
+	$ ls
+	01_kher_keep.mp3  02_semi-slug.mp3
+	$ moss add * && moss ls
+	01_kher_keep.mp3
+	02_semi-slug.mp3
+	$ moss play && moss status
+	playing: mpg123 01_kher_keep.mp3
+	$ sleep 10m && moss status
+	playing: mpg123 02_semi-slug.mp3
+	$ moss kill
+	[1]+  Done                    moss -start

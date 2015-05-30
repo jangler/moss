@@ -1,4 +1,7 @@
-assoc \.(flac|mp3|ogg|wav)$ play
-assoc \.(avi|flv|mp4|mpeg)$ mpv
+assoc .\.mid$ timidity
+assoc .\.mp3$ mpg123
+assoc .\.ogg$ ogg123
+assoc .\.wav$ aplay
+assoc .\.(avi|flac|flv|mp4|mpeg|mov|wma|wmv)$ mplayer
 assoc ^https?://www\.youtube\.com/watch\?v=. mpv
 assoc ^https?://youtu.be/. mpv
