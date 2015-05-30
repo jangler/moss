@@ -291,12 +291,14 @@ func handleConn(conn net.Conn) bool {
 		del(queue, indices)
 	case "insert":
 		if len(args) >= 2 {
-			length := queue.Len()
-			if curElem != nil {
-				queue.InsertAfter(args[1:], curElem)
-			}
-			if queue.Len() == length { // insertion failed; insert at front
-				queue.PushFront(args[1:])
+			for _, arg := range args[1:] {
+				length := queue.Len()
+				if curElem != nil {
+					queue.InsertAfter(arg, curElem)
+				}
+				if queue.Len() == length { // insertion failed
+					queue.PushFront(arg)
+				}
 			}
 		} else {
 			fmt.Fprintln(conn, "\033insert: not enough arguments")
