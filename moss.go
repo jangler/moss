@@ -17,12 +17,13 @@ var (
 
 // usage prints usage information about the program to standard error.
 func usage() {
-	fmt.Fprintf(stderr, "Usage: %s [<option> ...] <cmd> [<arg> ...]\n",
+	fmt.Fprintf(stderr, "Usage: %s [<option> ...] [<cmd> [<arg> ...]]\n",
 		os.Args[0])
 
 	fmt.Fprintln(stderr, `
-If invoked with the -start option, a moss server is started in the foreground.
-Otherwise, the given command and its arguments are sent to the server.`)
+If invoked with the -start option, a moss server is started.
+Otherwise, the given command and its arguments are sent to the server.
+Specifying no command is equivalent to specifying the 'status' command.`)
 
 	fmt.Fprint(stderr, `
 Commands:
@@ -61,9 +62,7 @@ func main() {
 		c := startServer(addrFlag)
 		os.Exit(<-c)
 	} else if flag.NArg() == 0 {
-		// confused user
-		flag.Usage()
-		os.Exit(1)
+		os.Exit(sendCommand(addrFlag, "status"))
 	} else {
 		os.Exit(sendCommand(addrFlag, flag.Args()...))
 	}

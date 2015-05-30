@@ -11,20 +11,21 @@ Installation
 
 Usage
 -----
-	Usage: moss [<option> ...] <cmd> [<arg> ...]
+	Usage: moss [<option> ...] [<cmd> [<arg> ...]]
 
-	If invoked with the -start option, a moss server is started in the foreground.
+	If invoked with the -start option, a moss server is started.
 	Otherwise, the given command and its arguments are sent to the server.
+	Specifying no command is equivalent to specifying the 'status' command.
 
 	Commands:
-	  add <cmd> [<arg> ...]  add a command to the current list
-	  del <index> ...        remove commands from the current list
-	  kill                   stop the server
-	  ls                     print the current list
-	  next                   step forward in the list
+	  add <cmd> [<arg> ...]  append a command to the playlist
+	  del <index> ...        remove commands from the playlist
+	  kill                   stop the server and current command
+	  ls                     print the current playlist
+	  next                   step forward in the playlist
 	  pause                  suspend the current command
 	  play                   start or resume the current command
-	  prev                   step backward in the list
+	  prev                   step backward in the playlist
 	  status                 print the current status and command
 	  stop                   kill the current command
 	  toggle                 toggle between play and pause states
