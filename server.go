@@ -55,6 +55,18 @@ func checkIndices(cmd string, indices []int, err error, w io.Writer,
 	return true
 }
 
+// clear removes items from l whose string values are matched by re.
+func clear(l *list.List, re *regexp.Regexp) {
+	e := l.Front()
+	for e != nil {
+		next := e.Next()
+		if re.MatchString(e.Value.(string)) {
+			l.Remove(e)
+		}
+		e = next
+	}
+}
+
 // del removes each element from l whose 1-based index is in indices.
 func del(l *list.List, indices []int) {
 	i := 1
@@ -279,6 +291,25 @@ func handleConn(conn net.Conn) bool {
 
 		// add association
 		assocs[args[1]] = Assoc{re, args[2:]}
+	case "clear":
+		if len(args) > 2 {
+			fmt.Fprintln(conn, "\033clear: too many arguments")
+			break
+		}
+
+		// compile regexp
+		s := ""
+		if len(args) == 2 {
+			s = args[1]
+		}
+		re, err := regexp.Compile(s)
+		if err != nil {
+			fmt.Fprintf(conn, "\033clear: bad regexp: %s\n", s)
+			break
+		}
+
+		// delete items
+		clear(queue, re)
 	case "del":
 		if len(args) < 2 {
 			fmt.Fprintln(conn, "\033del: not enough arguments")

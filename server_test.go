@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -56,6 +57,32 @@ func TestCheckIndices(t *testing.T) {
 	if want, got := "\033t: index out of bounds: 0\n",
 		buf.String(); want != got {
 		t.Errorf("checkIndices: got %#v; want %#v", got, want)
+	}
+}
+
+func TestClear(t *testing.T) {
+	// init
+	l := list.New()
+	for _, v := range []string{"alp", "bet", "gam", "del"} {
+		l.PushBack(v)
+	}
+
+	// clear nothing
+	clear(l, regexp.MustCompile("nothing"))
+	if want, got := "alp, bet, gam, del", stringFromList(l); want != got {
+		t.Errorf("clear: got %#v; want %#v", got, want)
+	}
+
+	// clear some
+	clear(l, regexp.MustCompile("a"))
+	if want, got := "bet, del", stringFromList(l); want != got {
+		t.Errorf("clear: got %#v; want %#v", got, want)
+	}
+
+	// clear all
+	clear(l, regexp.MustCompile(""))
+	if want, got := "", stringFromList(l); want != got {
+		t.Errorf("clear: got %#v; want %#v", got, want)
 	}
 }
 
