@@ -1,13 +1,28 @@
 Moss
 ====
-Something like [MPD](http://www.musicpd.org/), but allowing arbitrary commands
-to be executed instead of relying on specific playback libraries and plugins.
+Moss is a client/server software that can be used to dynamically create and
+execute "playlists" of arbitrary commands. This is mostly useful for audio and
+video media, but could be used for any purpose.
 
-This project is alpha status and may experience breaking changes.
+A playlist consists of "items", which are simply strings. By default, an item
+is executed by passing it as an argument to `/bin/sh -c`, but Moss can easily
+be configured to invoke a different program if the item matches a given regular
+expression.
+
+The concept for Moss was inspired by
+[Music Player Daemon (MPD)](http://www.musicpd.org/), and the interface is
+based on that of [mpc](http://www.musicpd.org/clients/mpc/).
+
+This project is in alpha status and may experience breaking changes.
 
 Installation
 ------------
+Install via the [go command](http://golang.org/cmd/go/):
+
 	go get -u github.com/jangler/moss
+
+If you use Arch Linux or a derivative, you may also install via the
+[AUR package](https://aur.archlinux.org/packages/moss/).
 
 Usage
 -----
@@ -22,6 +37,7 @@ Usage
 	Commands:
 	  add <item> ...        append an item to the playlist
 	  assoc <regexp> <cmd>  associate cmd with items that match regexp
+	  clear [<regexp>]      clear playlist, or remove items matching regexp
 	  del <index> ...       remove items from the playlist
 	  insert <item> ...     insert an item after the current item
 	  kill                  stop the server and current command
