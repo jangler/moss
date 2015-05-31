@@ -92,6 +92,7 @@ func TestDel(t *testing.T) {
 	for _, v := range []int{1, 2, 3, 4, 5} {
 		l.PushBack(v)
 	}
+	curElem = l.Front()
 
 	// del same index multiple times
 	del(l, []int{3, 3})

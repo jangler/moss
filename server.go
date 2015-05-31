@@ -355,7 +355,7 @@ func handleConn(conn net.Conn) bool {
 	case "lsassoc":
 		if len(args) == 1 {
 			for k, v := range assocs {
-				fmt.Fprintf(conn, "%s\t%s\n", k, strings.Join(v.Cmd, " "))
+				fmt.Fprintf(conn, "%s %s\n", k, strings.Join(v.Cmd, " "))
 			}
 		} else {
 			fmt.Fprintln(conn, "\033lsassoc: too many arguments")

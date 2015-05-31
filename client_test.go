@@ -46,8 +46,8 @@ func TestSendCommand(t *testing.T) {
 	startServer(testAddr, false)
 
 	// test invalid command
-	testSendCommand(t, testAddr, []string{"cmd"}, 1,
-		"", "cmd: unknown command\n", outbuf, errbuf)
+	testSendCommand(t, testAddr, []string{"LICENSE"}, 1,
+		"", "LICENSE: unknown command\n", outbuf, errbuf)
 
 	// test not enough arguments
 	cmds := []string{"add", "assoc", "del", "insert", "mv", "unassoc"}
@@ -72,6 +72,10 @@ func TestSendCommand(t *testing.T) {
 
 	// test valid command
 	testSendCommand(t, testAddr, []string{"status"}, 0, "stopped\n", "",
+		outbuf, errbuf)
+
+	// test valid command with path argument
+	testSendCommand(t, testAddr, []string{"add", "LICENSE"}, 0, "", "",
 		outbuf, errbuf)
 
 	sendCommand(testAddr, "kill")

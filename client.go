@@ -33,19 +33,17 @@ func sendCommand(addr string, args ...string) int {
 	}
 	defer conn.Close()
 
-	// canonicalize file path arguments
-	for i, arg := range args {
+	for i, arg := range args[1:] {
+		// canonicalize file path arguments
 		if _, err := os.Stat(arg); err == nil {
-			if arg, err := filepath.Abs(arg); err == nil {
-				args[i] = filepath.Clean(arg)
+			if arg, err = filepath.Abs(arg); err == nil {
+				arg = filepath.Clean(arg)
 			}
 		}
+		// escape spaces
+		args[i+1] = strings.Replace(arg, " ", `\ `, -1)
 	}
 
-	// send message
-	for i, arg := range args {
-		args[i] = strings.Replace(arg, " ", `\ `, -1) // escape spaces
-	}
 	fmt.Fprintf(conn, "%s\000", strings.Join(args, " "))
 
 	// handle response
