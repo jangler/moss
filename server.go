@@ -216,6 +216,8 @@ func waitCmd(cmd *exec.Cmd) {
 		state = stateStop
 		if curElem != nil {
 			play()
+		} else {
+			curCmd = nil
 		}
 	}
 	unlock <- 1
