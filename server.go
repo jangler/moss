@@ -61,6 +61,10 @@ func clear(l *list.List, re *regexp.Regexp) {
 	for e != nil {
 		next := e.Next()
 		if re.MatchString(e.Value.(string)) {
+			if e == curElem {
+				stop()
+				curElem = nil
+			}
 			l.Remove(e)
 		}
 		e = next
