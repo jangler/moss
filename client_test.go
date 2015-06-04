@@ -57,22 +57,22 @@ func TestSendCommand(t *testing.T) {
 	}
 
 	// test too many arguments (2)
-	cmds = []string{"kill", "ls", "lsassoc", "next", "pause", "prev", "status",
-		"stop", "toggle"}
+	cmds = []string{"kill", "ls", "lsassoc", "next", "pause", "prev", "stop",
+		"toggle"}
 	for _, cmd := range cmds {
 		testSendCommand(t, testAddr, []string{cmd, "1"}, 1,
 			"", fmt.Sprintf("%s: too many arguments\n", cmd), outbuf, errbuf)
 	}
 
 	// test too many arguments (3)
-	for _, cmd := range []string{"clear", "unassoc"} {
+	for _, cmd := range []string{"clear", "status", "unassoc"} {
 		testSendCommand(t, testAddr, []string{cmd, "1", "2"}, 1,
 			"", fmt.Sprintf("%s: too many arguments\n", cmd), outbuf, errbuf)
 	}
 
 	// test valid command
-	testSendCommand(t, testAddr, []string{"status"}, 0, "stopped\n", "",
-		outbuf, errbuf)
+	testSendCommand(t, testAddr, []string{"status"}, 0, "stopped #0/0:  \n",
+		"", outbuf, errbuf)
 
 	// test valid command with path argument
 	testSendCommand(t, testAddr, []string{"add", "LICENSE"}, 0, "", "",

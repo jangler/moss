@@ -46,13 +46,20 @@ Commands:
   pause                 suspend the current command
   play [<index>]        resume current command or start command at index
   prev                  step backward in the playlist
-  status                print the current status and command
+  status [<format>]     print information about the current state
   stop                  kill the current command
   toggle                toggle between play and pause states
   unassoc <regexp>      remove the command association for regexp
 `)
 
-	fmt.Fprintln(stderr, "\nOptions:")
+	fmt.Fprintln(stderr, `
+The status command's <format> argument supports the sequences %c, %f, %i, %n,
+%p, %s, and %t, which are replaced with current command, absolute file path of
+current item, index of current item, playlist length, command process ID,
+status, and current item, respectively.
+`)
+
+	fmt.Fprintln(stderr, "Options:")
 	flag.PrintDefaults()
 }
 

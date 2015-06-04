@@ -176,6 +176,54 @@ func prev() {
 	stepState()
 }
 
+// statusMap returns a map of special sequences to the strings they represent.
+func statusMap() map[string]string {
+	m := make(map[string]string)
+
+	if curElem != nil {
+		m["%t"] = curElem.Value.(string)
+		if _, err := os.Stat(m["%t"]); err == nil {
+			m["%f"] = filepath.Join(wd, m["%t"])
+		} else {
+			m["%f"] = m["%t"]
+		}
+		i := 1
+		for e := queue.Front(); e != curElem && e != nil; e = e.Next() {
+			i++
+		}
+		m["%i"] = fmt.Sprintf("%d", i)
+	} else {
+		m["%t"] = ""
+		m["%f"] = ""
+		m["%i"] = "0"
+	}
+
+	m["%n"] = fmt.Sprintf("%d", queue.Len())
+
+	if curCmd != nil {
+		m["%c"] = strings.Join(curCmd.Args[:len(curCmd.Args)-1], " ")
+		if curCmd.Process != nil {
+			m["%p"] = fmt.Sprintf("%d", curCmd.Process.Pid)
+		} else {
+			m["%p"] = ""
+		}
+	} else {
+		m["%c"] = ""
+		m["%p"] = ""
+	}
+
+	switch state {
+	case statePause:
+		m["%s"] = "paused"
+	case statePlay:
+		m["%s"] = "playing"
+	case stateStop:
+		m["%s"] = "stopped"
+	}
+
+	return m
+}
+
 // stepState adjusts the state after a change in the current command.
 func stepState() {
 	if state == statePlay && curElem != nil && curCmd != nil {
@@ -225,19 +273,11 @@ func waitCmd(cmd *exec.Cmd) {
 
 // writeStatus writes a status message to w depending on the state s and
 // current queue element e.
-func writeStatus(w io.Writer, s uint8, args []string) {
-	switch s {
-	case statePause:
-		fmt.Fprint(w, "paused")
-	case statePlay:
-		fmt.Fprint(w, "playing")
-	case stateStop:
-		fmt.Fprint(w, "stopped")
+func writeStatus(w io.Writer, m map[string]string, s string) {
+	for k, v := range m {
+		s = strings.Replace(s, k, v, -1)
 	}
-	if args != nil {
-		fmt.Fprint(w, ": "+strings.Join(args, " "))
-	}
-	fmt.Fprintln(w)
+	fmt.Fprintln(w, s)
 }
 
 // handleConn handles a message from a connection and returns true if and only
@@ -439,11 +479,9 @@ func handleConn(conn net.Conn) bool {
 		}
 	case "status":
 		if len(args) == 1 {
-			if curCmd != nil {
-				writeStatus(conn, state, curCmd.Args)
-			} else {
-				writeStatus(conn, state, nil)
-			}
+			writeStatus(conn, statusMap(), "%s #%i/%n: %c %t")
+		} else if len(args) == 2 {
+			writeStatus(conn, statusMap(), args[1])
 		} else {
 			fmt.Fprintln(conn, "\033status: too many arguments")
 		}

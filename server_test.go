@@ -189,20 +189,9 @@ func TestStartServer(t *testing.T) {
 
 func TestWriteStatus(t *testing.T) {
 	buf := &bytes.Buffer{}
-	writeStatus(buf, stateStop, nil)
-	if want, got := "stopped\n", buf.String(); want != got {
-		t.Errorf("writeStatus: got %#v; want %#v", got, want)
-	}
-
-	buf.Reset()
-	writeStatus(buf, statePause, []string{"echo"})
-	if want, got := "paused: echo\n", buf.String(); want != got {
-		t.Errorf("writeStatus: got %#v; want %#v", got, want)
-	}
-
-	buf.Reset()
-	writeStatus(buf, statePlay, []string{"echo"})
-	if want, got := "playing: echo\n", buf.String(); want != got {
+	m := map[string]string{"%a": "A", "%b": "B", "%c": "C"}
+	writeStatus(buf, m, "hello %a %a world %b %c %b")
+	if want, got := "hello A A world B C B\n", buf.String(); want != got {
 		t.Errorf("writeStatus: got %#v; want %#v", got, want)
 	}
 }

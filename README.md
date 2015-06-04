@@ -13,8 +13,6 @@ The concept for Moss was inspired by
 [Music Player Daemon (MPD)](http://www.musicpd.org/), and the interface is
 based on that of [mpc](http://www.musicpd.org/clients/mpc/).
 
-This project is in alpha status and may experience breaking changes.
-
 Installation
 ------------
 Install via the [go command](http://golang.org/cmd/go/):
@@ -48,14 +46,20 @@ Usage
 	  pause                 suspend the current command
 	  play [<index>]        resume current command or start command at index
 	  prev                  step backward in the playlist
-	  status                print the current status and command
+	  status [<format>]     print information about the current state
 	  stop                  kill the current command
 	  toggle                toggle between play and pause states
 	  unassoc <regexp>      remove the command association for regexp
 
+	The status command's <format> argument supports the sequences %c, %f, %i, %n,
+	%p, %s, and %t, which are replaced with current command, absolute file path of
+	current item, index of current item, playlist length, command process ID,
+	status, and current item, respectively.
+
 	Options:
 	  -addr=":7781": address to connect to
 	  -start=false: start server instead of sending command
+	  -stdin=false: read additional arguments from standard input
 	  -version=false: display version information and exit
 
 Example
@@ -69,8 +73,8 @@ Example
 	01_kher_keep.mp3
 	02_semi-slug.mp3
 	$ moss play && moss status
-	playing: mpg123 01_kher_keep.mp3
+	playing #1/2: mpg123 01_kher_keep.mp3
 	$ sleep 10m && moss status
-	playing: mpg123 02_semi-slug.mp3
+	playing #2/2: mpg123 02_semi-slug.mp3
 	$ moss kill
 	[1]+  Done                    moss -start
