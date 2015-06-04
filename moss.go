@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
+	"strings"
 )
 
 const version = "0.1.0"
@@ -12,6 +15,7 @@ const version = "0.1.0"
 var (
 	addrFlag    string
 	startFlag   bool
+	stdinFlag   bool
 	versionFlag bool
 )
 
@@ -52,15 +56,40 @@ Commands:
 	flag.PrintDefaults()
 }
 
+// readLines reads each line from r and returns the lines as a slice of
+// strings.
+func readLines(r io.Reader) []string {
+	a := make([]string, 0)
+	b := bufio.NewReader(r)
+	for {
+		line, err := b.ReadString('\n')
+		if len(line) > 0 {
+			a = append(a, strings.TrimSuffix(line, "\n"))
+		}
+		if err != nil {
+			break
+		}
+	}
+	return a
+}
+
 func main() {
 	// init flags
 	flag.Usage = usage
 	flag.StringVar(&addrFlag, "addr", ":7781", "address to connect to")
 	flag.BoolVar(&startFlag, "start", false, "start server instead of "+
 		"sending command")
+	flag.BoolVar(&stdinFlag, "stdin", false, "read additional arguments from "+
+		"standard input")
 	flag.BoolVar(&versionFlag, "version", false, "display version "+
 		"information and exit")
 	flag.Parse()
+
+	// get args, reading from stdin if specified
+	args := flag.Args()
+	if stdinFlag {
+		args = append(args, readLines(os.Stdin)...)
+	}
 
 	// do what feels right
 	if versionFlag {
@@ -69,9 +98,9 @@ func main() {
 	} else if startFlag {
 		c := startServer(addrFlag, true)
 		os.Exit(<-c)
-	} else if flag.NArg() == 0 {
+	} else if len(args) == 0 {
 		os.Exit(sendCommand(addrFlag, "status"))
 	} else {
-		os.Exit(sendCommand(addrFlag, flag.Args()...))
+		os.Exit(sendCommand(addrFlag, args...))
 	}
 }
