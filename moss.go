@@ -29,11 +29,11 @@ On server start, commands are read from ~/.mossrc or ~/.config/mossrc.`)
 
 	fmt.Fprint(stderr, `
 Commands:
-  add <item> ...        append an item to the playlist
+  add <item> ...        append items to the playlist
   assoc <regexp> <cmd>  associate cmd with items that match regexp
   clear [<regexp>]      clear playlist, or remove items matching regexp
   del <index> ...       remove items from the playlist
-  insert <item> ...     insert an item after the current item
+  insert <item> ...     insert items after the current item
   kill                  stop the server and current command
   ls                    print the current playlist
   lsassoc               print the list of command associations
