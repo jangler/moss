@@ -50,7 +50,7 @@ Usage
 	  status [<format>]       print information about the current state
 	  stop                    kill the current command
 	  toggle                  toggle between play and pause states
-	  unassoc <regexp>        remove the command association for regexp
+	  unassoc <regexp> ...    remove the command association for each regexp
 
 	The status command's <format> argument supports the sequences %c, %f, %i, %n,
 	%p, %s, and %t, which are replaced with current command, absolute file path of

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const version = "1.0.0"
+const version = "1.1.0"
 
 var (
 	addrFlag    string
@@ -50,7 +50,7 @@ Commands:
   status [<format>]       print information about the current state
   stop                    kill the current command
   toggle                  toggle between play and pause states
-  unassoc <regexp>        remove the command association for regexp
+  unassoc <regexp> ...    remove the command association for each regexp
 `)
 
 	fmt.Fprintln(stderr, `

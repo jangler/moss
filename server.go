@@ -552,13 +552,12 @@ func handleConn(conn net.Conn) bool {
 		if len(args) < 2 {
 			fmt.Fprintln(conn, "\033unassoc: not enough arguments")
 			break
-		} else if len(args) > 2 {
-			fmt.Fprintln(conn, "\033unassoc: too many arguments")
-			break
 		}
 
-		// remove association
-		delete(assocs, args[1])
+		// remove associations
+		for _, arg := range args[1:] {
+			delete(assocs, arg)
+		}
 	default:
 		fmt.Fprintf(conn, "\033%s: unknown command\n", args[0])
 	}

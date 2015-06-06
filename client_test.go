@@ -65,7 +65,7 @@ func TestSendCommand(t *testing.T) {
 	}
 
 	// test too many arguments (3)
-	for _, cmd := range []string{"clear", "status", "unassoc"} {
+	for _, cmd := range []string{"clear", "status"} {
 		testSendCommand(t, testAddr, []string{cmd, "1", "2"}, 1,
 			"", fmt.Sprintf("%s: too many arguments\n", cmd), outbuf, errbuf)
 	}
