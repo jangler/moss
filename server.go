@@ -410,9 +410,6 @@ func handleConn(conn net.Conn) bool {
 		if len(args) < 3 {
 			fmt.Fprintln(conn, "\033mv: not enough arguments")
 			break
-		} else if len(args) > 3 {
-			fmt.Fprintln(conn, "\033mv: too many arguments")
-			break
 		}
 
 		// parse indices
@@ -421,14 +418,25 @@ func handleConn(conn net.Conn) bool {
 			break
 		}
 
-		// get source and target elements
-		e1, e2 := getIndex(queue, indices[0]), getIndex(queue, indices[1])
+		// get source and dest elements
+		sources := make([]*list.Element, len(indices) - 1)
+		for i, srcIndex := range indices[:len(indices) - 1] {
+			sources[i] = getIndex(queue, srcIndex)
+		}
+		dst := getIndex(queue, indices[len(indices) - 1])
 
-		// move source element to target
-		if indices[0] < indices[1] {
-			queue.MoveAfter(e1, e2)
+		// move first source element
+		if indices[0] < indices[len(indices) - 1] {
+			queue.MoveAfter(sources[0], dst)
 		} else {
-			queue.MoveBefore(e1, e2)
+			queue.MoveBefore(sources[0], dst)
+		}
+		dst = sources[0]
+
+		// move other source elements
+		for _, src := range sources[1:] {
+			queue.MoveAfter(src, dst)
+			dst = src
 		}
 	case "next":
 		if len(args) == 1 {

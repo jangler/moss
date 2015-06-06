@@ -33,23 +33,23 @@ On server start, commands are read from ~/.mossrc or ~/.config/mossrc.`)
 
 	fmt.Fprint(stderr, `
 Commands:
-  add <item> ...        append items to the playlist
-  assoc <regexp> <cmd>  associate cmd with items that match regexp
-  clear [<regexp>]      clear playlist, or remove items matching regexp
-  del <index> ...       remove items from the playlist
-  insert <item> ...     insert items after the current item
-  kill                  stop the server and current command
-  ls                    print the current playlist
-  lsassoc               print the list of command associations
-  mv <index> <index>    move an item from one index to another
-  next                  step forward in the playlist
-  pause                 suspend the current command
-  play [<index>]        resume current command or start command at index
-  prev                  step backward in the playlist
-  status [<format>]     print information about the current state
-  stop                  kill the current command
-  toggle                toggle between play and pause states
-  unassoc <regexp>      remove the command association for regexp
+  add <item> ...          append items to the playlist
+  assoc <regexp> <cmd>    associate cmd with items that match regexp
+  clear [<regexp>]        remove items matching regexp, or all
+  del <index> ...         remove items from the playlist
+  insert <item> ...       insert items after the current item
+  kill                    stop the server and current command
+  ls                      print the current playlist
+  lsassoc                 print the list of command associations
+  mv <index> ... <index>  move items to the last given index
+  next                    step forward in the playlist
+  pause                   suspend the current command
+  play [<index>]          resume current command or start command at index
+  prev                    step backward in the playlist
+  status [<format>]       print information about the current state
+  stop                    kill the current command
+  toggle                  toggle between play and pause states
+  unassoc <regexp>        remove the command association for regexp
 `)
 
 	fmt.Fprintln(stderr, `
