@@ -35,8 +35,9 @@ On server start, commands are read from ~/.mossrc or ~/.config/mossrc.`)
 Commands:
   add <item> ...          append items to the playlist
   assoc <regexp> <cmd>    associate cmd with items that match regexp
-  clear [<regexp>]        remove items matching regexp, or all
+  clear [<regexp>]        remove items matching regexp, or all [deprecated]
   del <index> ...         remove items from the playlist
+  index <regexp> ...      print indices of items matching each regexp
   insert <item> ...       insert items after the current item
   kill                    stop the server and current command
   ls                      print the current playlist

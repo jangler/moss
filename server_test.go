@@ -10,6 +10,15 @@ import (
 	"testing"
 )
 
+// joinInts returns a string representation of a.
+func joinInts(a []int) string {
+	a2 := make([]string, len(a))
+	for i, v := range a {
+		a2[i] = fmt.Sprintf("%d", v)
+	}
+	return strings.Join(a2, ", ")
+}
+
 // stringFromList returns a string representation of l.
 func stringFromList(l *list.List) string {
 	a := make([]string, l.Len())
@@ -114,6 +123,33 @@ func TestGetIndex(t *testing.T) {
 		if got := getIndex(l, v).Value.(int); got != v {
 			t.Errorf("getIndex: got %#v; want %#v", got, v)
 		}
+	}
+}
+
+func TestGetIndices(t *testing.T) {
+	// init
+	l := list.New()
+	for _, v := range []string{"alpha", "beta", "gamma", "delta", "epsilon"} {
+		l.PushBack(v)
+	}
+
+	// test no matches
+	res := []*regexp.Regexp{regexp.MustCompile("omega")}
+	if want, got := "", joinInts(getIndices(l, res)); want != got {
+		t.Errorf("getIndices() == %#v; want %#v", got, want)
+	}
+
+	// test one regexp
+	res = []*regexp.Regexp{regexp.MustCompile("e")}
+	if want, got := "2, 4, 5", joinInts(getIndices(l, res)); want != got {
+		t.Errorf("getIndices() == %#v; want %#v", got, want)
+	}
+
+	// test multiple regexps
+	res = []*regexp.Regexp{regexp.MustCompile("e.*t"),
+		regexp.MustCompile("^.?a")}
+	if want, got := "1, 2, 3, 4", joinInts(getIndices(l, res)); want != got {
+		t.Errorf("getIndices() == %#v; want %#v", got, want)
 	}
 }
 

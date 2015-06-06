@@ -11,6 +11,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -57,18 +58,7 @@ func checkIndices(cmd string, indices []int, err error, w io.Writer,
 
 // clear removes items from l whose string values are matched by re.
 func clear(l *list.List, re *regexp.Regexp) {
-	e := l.Front()
-	for e != nil {
-		next := e.Next()
-		if re.MatchString(e.Value.(string)) {
-			if e == curElem {
-				stop()
-				curElem = nil
-			}
-			l.Remove(e)
-		}
-		e = next
-	}
+	del(l, getIndices(l, []*regexp.Regexp{re})) // this is why it's deprecated
 }
 
 // del removes each element from l whose 1-based index is in indices.
@@ -98,6 +88,33 @@ func getIndex(l *list.List, i int) *list.Element {
 		i--
 	}
 	return e
+}
+
+// getIndices returns a slice of 1-based indices of items in l that match a
+// regular expression in res.
+func getIndices(l *list.List, res []*regexp.Regexp) []int {
+	m := make(map[int]bool) // use map so that each index is only included once
+
+	// get matches
+	for _, re := range res {
+		i := 1
+		for e := l.Front(); e != nil; e = e.Next() {
+			if re.MatchString(e.Value.(string)) {
+				m[i] = true
+			}
+			i++
+		}
+	}
+
+	// return sorted int slice converted from map
+	indices := make([]int, len(m))
+	i := 0
+	for index := range m {
+		indices[i] = index
+		i++
+	}
+	sort.Ints(indices)
+	return indices
 }
 
 // ls writes the contents of l, whose elements must have string values, to w.
@@ -370,6 +387,27 @@ func handleConn(conn net.Conn) bool {
 
 		// delete elements
 		del(queue, indices)
+	case "index":
+		if len(args) < 2 {
+			fmt.Fprintln(conn, "\033index: not enough arguments")
+			break
+		}
+
+		// compile regexps
+		res := make([]*regexp.Regexp, len(args) - 1)
+		for i, arg := range args[1:] {
+			re, err := regexp.Compile(arg)
+			if err != nil {
+				fmt.Fprintf(conn, "\033index: bad regexp: %s\n", arg)
+				return true
+			}
+			res[i] = re
+		}
+
+		// print indices
+		for _, index := range getIndices(queue, res) {
+			fmt.Fprintf(conn, "%d\n", index)
+		}
 	case "insert":
 		if len(args) >= 2 {
 			e := curElem
