@@ -394,7 +394,7 @@ func handleConn(conn net.Conn) bool {
 		}
 
 		// compile regexps
-		res := make([]*regexp.Regexp, len(args) - 1)
+		res := make([]*regexp.Regexp, len(args)-1)
 		for i, arg := range args[1:] {
 			re, err := regexp.Compile(arg)
 			if err != nil {
@@ -427,9 +427,8 @@ func handleConn(conn net.Conn) bool {
 		if len(args) == 1 {
 			stop()
 			return false
-		} else {
-			fmt.Fprintln(conn, "\033kill: too many arguments")
 		}
+		fmt.Fprintln(conn, "\033kill: too many arguments")
 	case "ls":
 		if len(args) == 1 {
 			ls(queue, conn)
@@ -457,14 +456,14 @@ func handleConn(conn net.Conn) bool {
 		}
 
 		// get source and dest elements
-		sources := make([]*list.Element, len(indices) - 1)
-		for i, srcIndex := range indices[:len(indices) - 1] {
+		sources := make([]*list.Element, len(indices)-1)
+		for i, srcIndex := range indices[:len(indices)-1] {
 			sources[i] = getIndex(queue, srcIndex)
 		}
-		dst := getIndex(queue, indices[len(indices) - 1])
+		dst := getIndex(queue, indices[len(indices)-1])
 
 		// move first source element
-		if indices[0] < indices[len(indices) - 1] {
+		if indices[0] < indices[len(indices)-1] {
 			queue.MoveAfter(sources[0], dst)
 		} else {
 			queue.MoveBefore(sources[0], dst)

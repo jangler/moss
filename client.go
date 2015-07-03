@@ -15,8 +15,6 @@ func printMsg(msg string) int {
 		if msg[0] == '\033' { // signals an error message
 			fmt.Fprint(stderr, msg[1:])
 			return 1
-		} else {
-			fmt.Fprint(stdout, msg)
 		}
 	}
 	return 0

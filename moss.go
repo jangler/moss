@@ -67,7 +67,7 @@ status, and current item, respectively.
 // readLines reads each line from r and returns the lines as a slice of
 // strings.
 func readLines(r io.Reader) []string {
-	a := make([]string, 0)
+	var a []string
 	b := bufio.NewReader(r)
 	for {
 		line, err := b.ReadString('\n')
